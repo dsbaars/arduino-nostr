@@ -107,7 +107,9 @@ void NostrRelayManager::loop() {
  * @param relayUrl 
  */
 void NostrRelayManager::broadcastEventToRelay(String serializedEventJson, String relayUrl) {
+    #ifdef NOSTR_DEBUG
     Serial.println("Broadcasting event  " + serializedEventJson);
+    #endif
     for (int i = 0; i < relays.size(); i++) {
         _webSocketClients[i].sendTXT(serializedEventJson);
         // delay(1000);
@@ -195,19 +197,26 @@ void NostrRelayManager::printRelay(int index) const {
 void NostrRelayManager::connect(std::function<void(WStype_t, uint8_t*, size_t)> callback) {
     // Initialize WebSocket connections
     // serial print all relays
+    #ifdef NOSTR_DEBUG
+
     Serial.println("Relays are:");
     for (int i = 0; i < relays.size(); i++) {
         Serial.println(relays[i]);
     }
+    #endif
     for (int i = 0; i < relays.size(); i++) {
         // if the relay includes a "/" split on the first / and use the first part as the host and the second part as the path
         if(String(relays[i]).indexOf("/") > 0) {
             String host = String(relays[i]).substring(0, String(relays[i]).indexOf("/"));
             String path = String(relays[i]).substring(String(relays[i]).indexOf("/"));
+            #ifdef NOSTR_DEBUG
             Serial.println("Connecting to relay: " + host + " with path: " + path);
+            #endif
             _webSocketClients[i].beginSSL(host, 443, path);
         } else {
+            #ifdef NOSTR_DEBUG
             Serial.println("Connecting to relay: " + String(relays[i]));
+            #endif
             _webSocketClients[i].beginSSL(relays[i], 443);
         }
         _webSocketClients[i].setReconnectInterval(5000);
@@ -272,19 +281,27 @@ return result;
  * @param relayIndex 
  */
 void NostrRelayManager::_webSocketEvent(WStype_t type, uint8_t* payload, size_t length, int relayIndex) {
+  #ifdef NOSTR_DEBUG
   Serial.println("Message from relay index:" + String(relayIndex));
+  #endif
   switch (type) {
     case WStype_DISCONNECTED:
+        #ifdef NOSTR_DEBUG
         Serial.printf("[WSc] Disconnected from relay: %s\n", ".");
+        #endif
         performEventAction("disconnected", relays[relayIndex].c_str());
         break;
     case WStype_CONNECTED:
+        #ifdef NOSTR_DEBUG
         Serial.printf("[WSc] Connected to relay: %s\n", ".");
+        #endif
         performEventAction("connected", "message");
     break;
     case WStype_TEXT:
     {
+        #ifdef NOSTR_DEBUG
         Serial.printf("[WSc]: Received text from relay %s: %s\n", ".", payload);
+        #endif
         const char *payloadStr = (char *)payload;
 
         // if the string is a JSON string, convert it to a JSON object
@@ -320,8 +337,10 @@ void NostrRelayManager::_webSocketEvent(WStype_t type, uint8_t* payload, size_t 
         } else if (String(payloadStr).indexOf("\"OK\"") > 0) {
             performEventAction("ok", payloadStr);
         } else {
+            #ifdef NOSTR_DEBUG
             Serial.println("Received text from relay: " + String(payloadStr));
             Serial.println("Not a JSON string, not an OK string, not doing anything.");
+            #endif
         }
         break;
     }
